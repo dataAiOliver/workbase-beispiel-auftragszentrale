@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1b2130">
+  <title>Nordwerk Auftragszentrale</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar__inner">
+      <div class="wordmark">
+        <span class="wordmark__logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 20V4h3.2l9.6 11V4H20v16h-3.2L7.2 9v11z" fill="currentColor"/></svg>
+        </span>
+        <span class="wordmark__text"><strong>Nordwerk</strong> Auftragszentrale</span>
+      </div>
+      <nav class="appnav" aria-label="Bereiche">
+        <a href="#orders" class="appnav__link is-active" aria-current="page">Bestellungen</a>
+        <a href="#simulator" class="appnav__link">Zahlungseingänge</a>
+      </nav>
+      <div class="appbar__meta">
+        <span class="env-badge" id="env-badge" hidden></span>
+        <span class="user-chip" title="Angemeldet">
+          <span class="user-chip__avatar" aria-hidden="true">LC</span>
+          <span class="user-chip__name">Lea Carstens · Ops</span>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="page" id="orders">
+    <div class="page__head">
+      <div>
+        <h1>Bestellungen</h1>
+        <p class="page__sub">Webshop &amp; B2B · Zahlungen über PayNord · Rechnungen im Archiv</p>
+      </div>
+      <button type="button" class="btn btn--ghost" id="refresh">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.6 6.2A6.5 6.5 0 1 0 16.5 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M16 2.5v4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Aktualisieren
+      </button>
+    </div>
+
+    <section class="kpis" aria-label="Kennzahlen" id="kpis">
+      <div class="kpi"><span class="kpi__label">Bestellungen</span><span class="kpi__value" data-kpi="orders">–</span></div>
+      <div class="kpi"><span class="kpi__label">Umsatz (ohne Erstattungen)</span><span class="kpi__value" data-kpi="revenue">–</span></div>
+      <div class="kpi"><span class="kpi__label">Letzte 7 Tage</span><span class="kpi__value" data-kpi="last7">–</span></div>
+      <div class="kpi"><span class="kpi__label">Erstattet</span><span class="kpi__value" data-kpi="refunded">–</span></div>
+      <div class="kpi kpi--warn" id="kpi-dup" hidden>
+        <span class="kpi__label">Zahlungen mit mehreren Bestellungen</span>
+        <span class="kpi__value" data-kpi="dups">–</span>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <section class="card orders" aria-labelledby="orders-title">
+        <div class="card__head">
+          <h2 id="orders-title">Auftragsliste</h2>
+          <span class="muted" id="orders-count"></span>
+        </div>
+        <form class="filters" id="filters" role="search">
+          <label class="search">
+            <span class="visually-hidden">Suche</span>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m13.5 13.5 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <input type="search" name="q" id="filter-q" placeholder="Bestellnummer, Kunde oder Zahlungs-ID" autocomplete="off">
+          </label>
+          <label class="select">
+            <span class="visually-hidden">Status</span>
+            <select name="status" id="filter-status">
+              <option value="">Alle Status</option>
+              <option value="bezahlt">Bezahlt</option>
+              <option value="versandt">Versandt</option>
+              <option value="erstattet">Erstattet</option>
+              <option value="storniert">Storniert</option>
+            </select>
+          </label>
+        </form>
+
+        <div class="banner banner--error" id="orders-error" role="alert" hidden>
+          <span id="orders-error-text">Bestellungen konnten nicht geladen werden.</span>
+          <button type="button" class="btn btn--small btn--ghost" id="orders-retry">Erneut versuchen</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table" id="orders-table">
+            <thead>
+              <tr>
+                <th scope="col">Bestellung</th>
+                <th scope="col">Datum</th>
+                <th scope="col">Kunde</th>
+                <th scope="col" class="num">Artikel</th>
+                <th scope="col" class="num">Betrag</th>
+                <th scope="col">Status</th>
+                <th scope="col">Zahlung</th>
+              </tr>
+            </thead>
+            <tbody id="orders-body" aria-busy="true">
+              <tr class="row-skeleton"><td colspan="7"><span></span></td></tr>
+              <tr class="row-skeleton"><td colspan="7"><span></span></td></tr>
+              <tr class="row-skeleton"><td colspan="7"><span></span></td></tr>
+              <tr class="row-skeleton"><td colspan="7"><span></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="empty" id="orders-empty" hidden>
+          <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="9" y="7" width="30" height="34" rx="4" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M16 17h16M16 24h16M16 31h9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+          <p><strong>Keine Bestellungen gefunden.</strong><br><span id="orders-empty-hint">Für diese Filter gibt es keine Treffer.</span></p>
+          <button type="button" class="btn btn--small btn--ghost" id="filters-reset">Filter zurücksetzen</button>
+        </div>
+        <div class="pager" id="pager" hidden>
+          <button type="button" class="btn btn--small btn--ghost" id="page-prev">Zurück</button>
+          <span class="muted" id="page-info"></span>
+          <button type="button" class="btn btn--small btn--ghost" id="page-next">Weiter</button>
+        </div>
+      </section>
+
+      <aside class="card simulator" id="simulator" aria-labelledby="sim-title">
+        <div class="card__head card__head--stack">
+          <h2 id="sim-title">Zahlungseingang simulieren</h2>
+          <p class="muted">Sendet ein PayNord-Ereignis <code>payment.succeeded</code> an <code>/api/webhooks/payment</code>.</p>
+        </div>
+
+        <div class="sim-event">
+          <div class="sim-event__row">
+            <span class="sim-label">Ereignis</span>
+            <code class="sim-event__id" id="sim-event-id">–</code>
+          </div>
+          <div class="sim-event__row">
+            <span class="sim-label">Zahlung</span>
+            <code class="sim-event__id" id="sim-payment-id">–</code>
+          </div>
+        </div>
+
+        <label class="field">
+          <span class="sim-label">Kundin / Kunde</span>
+          <select id="sim-customer"></select>
+        </label>
+
+        <div class="sim-basket">
+          <div class="sim-basket__head">
+            <span class="sim-label">Warenkorb</span>
+            <button type="button" class="btn btn--link" id="sim-reroll">Anderer Warenkorb</button>
+          </div>
+          <ul class="sim-basket__list" id="sim-items"><li class="muted">Artikel werden geladen …</li></ul>
+          <div class="sim-basket__total"><span>Betrag</span><strong id="sim-amount">–</strong></div>
+        </div>
+
+        <div class="sim-actions">
+          <button type="button" class="btn btn--primary" id="sim-send">Zustellen</button>
+          <button type="button" class="btn btn--secondary" id="sim-resend" disabled>Erneut zustellen</button>
+          <button type="button" class="btn btn--warn" id="sim-double">Zweimal gleichzeitig zustellen</button>
+          <button type="button" class="btn btn--link" id="sim-new">Neues Ereignis</button>
+        </div>
+
+        <div class="sim-log">
+          <h3>Zustellprotokoll</h3>
+          <ol class="sim-log__list" id="sim-log" aria-live="polite">
+            <li class="sim-log__empty">Noch keine Zustellung in dieser Sitzung.</li>
+          </ol>
+        </div>
+
+        <dl class="sim-config">
+          <div><dt>Anbieter-Endpunkt</dt><dd><code id="cfg-provider">–</code></dd></div>
+          <div><dt>Rechnungsarchiv</dt><dd><code id="cfg-bucket">–</code></dd></div>
+        </dl>
+      </aside>
+    </div>
+  </main>
+
+  <dialog class="drawer" id="drawer" aria-labelledby="drawer-title">
+    <div class="drawer__panel">
+      <header class="drawer__head">
+        <div>
+          <p class="drawer__eyebrow" id="drawer-eyebrow">Bestellung</p>
+          <h2 id="drawer-title">–</h2>
+        </div>
+        <button type="button" class="icon-btn" id="drawer-close" aria-label="Schließen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <div class="drawer__body" id="drawer-body">
+        <p class="muted">Wird geladen …</p>
+      </div>
+    </div>
+  </dialog>
+
+  <footer class="footer">
+    <span>Nordwerk Handel GmbH · interne Anwendung</span>
+    <span class="footer__meta" id="meta"></span>
+  </footer>
+</body>
+</html>

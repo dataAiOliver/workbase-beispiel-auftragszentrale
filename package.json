@@ -1,0 +1,19 @@
+{
+  "name": "nordwerk-orders",
+  "version": "2.3.0",
+  "private": true,
+  "description": "Nordwerk Auftragszentrale: interne Konsole für Bestellungen, Zahlungseingänge und Rechnungsarchiv",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node scripts/run-tests.mjs",
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1169.0",
+    "pg": "8.23.1"
+  }
+}
